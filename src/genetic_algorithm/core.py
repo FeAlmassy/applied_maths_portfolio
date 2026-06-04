@@ -71,7 +71,6 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
 
     return filho1, filho2, filho3
 
-# AQUI ESTÁ A CORREÇÃO DO ERRO (O 4º ARGUMENTO: num_genes_mutacao)
 def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, num_genes_mutacao: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     for filho in [filho1, filho2, filho3]:
         num_mutacoes_reais = min(num_genes_mutacao, len(filho))
