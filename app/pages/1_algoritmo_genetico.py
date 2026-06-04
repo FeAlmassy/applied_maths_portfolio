@@ -88,12 +88,12 @@ if arquivo_excel is not None:
                         status_text.text(f"🎯 Fitness alvo de {fitness_alvo} atingido na geração {g+1}!")
                         break
 
-                    # Ciclo Evolutivo
+                    # Ciclo Evolutivo - Variáveis explicitamente corrigidas
                     pai, mae = selecionar_pais_roleta(populacao, percentuais)
-                    filho1, ... = cruzar_pais(pai, mae)
-                    filho1, ... = mutar(filho1, ...)
+                    filho1, filho2, filho3 = cruzar_pais(pai, mae)
+                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3)
                     populacao = atualizar_populacao(
-                        populacao, fitnesses, filho1, ..., array_dados, array_gabarito
+                        populacao, fitnesses, filho1, filho2, filho3, array_dados, array_gabarito
                     )
 
                 # Salva o melhor modelo na sessão do Streamlit para usar na predição abaixo
