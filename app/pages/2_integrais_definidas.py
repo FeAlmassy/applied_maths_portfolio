@@ -5,6 +5,20 @@ import plotly.graph_objects as go
 import sympy as sp
 import streamlit as st
 
+import sys
+import os
+
+# Força o Python a reconhecer a raiz do projeto (volta duas pastas atrás)
+raiz = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if raiz not in sys.path:
+    sys.path.append(raiz)
+
+# A SUA IMPORTAÇÃO CRÍTICA VEM AQUI:
+from src.integration.engine import (
+    METODOS, ORDEM_TEORICA, parse_function, safe_eval_curve,
+    compute_reference_quad, series_convergencia, estimate_observed_order
+)
+
 # IMPORTAÇÃO DA LÓGICA DO SEU NOVO MOTOR
 from src.integration.engine import (
     METODOS, ORDEM_TEORICA, parse_function, safe_eval_curve,
