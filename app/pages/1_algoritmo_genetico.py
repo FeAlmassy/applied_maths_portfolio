@@ -12,7 +12,7 @@ if raiz not in sys.path:
 from src.genetic_algorithm.core import (
     processar_base_dados, criar_cromossomos, calcular_fitness,
     fitness_percentual, selecionar_pais_roleta, cruzar_pais,
-    mutar, atualizar_populacao, prever_novo_cliente
+    mutarV2, atualizar_populacao, prever_novo_cliente
 )
 
 st.title("🧬 Otimização Heurística: Algoritmo Genético")
