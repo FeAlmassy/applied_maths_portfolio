@@ -77,10 +77,20 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
 
     return filho1, filho2, filho3
 
-def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, num_genes_mutacao: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Mutação de Ponto Fixo: Altera exatamente 'N' genes aleatórios de cada filho.
+    """
     for filho in [filho1, filho2, filho3]:
-        indice = np.random.randint(0, len(filho))
-        filho[indice] = -1 + 2 * np.random.rand()
+        # Garante que não vamos tentar mutar mais genes do que o cromossomo possui
+        num_mutacoes_reais = min(num_genes_mutacao, len(filho))
+        
+        # Sorteia N índices únicos (sem repetição) para sofrerem mutação
+        indices_para_mutar = np.random.choice(len(filho), num_mutacoes_reais, replace=False)
+        
+        # Gera novos valores aleatórios entre -1 e 1 apenas para esses índices
+        filho[indices_para_mutar] = -1 + 2 * np.random.rand(num_mutacoes_reais)
+        
     return filho1, filho2, filho3
 
 def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
