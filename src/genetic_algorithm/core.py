@@ -71,11 +71,21 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
 
     return filho1, filho2, filho3
 
-def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, num_genes_mutacao: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, taxa_mutacao: float = 0.15) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Aplica mutação em massa. Em vez de mudar 1 único gene, 
+    cada gene tem 'taxa_mutacao' (15%) de chance de ser completamente alterado.
+    """
     for filho in [filho1, filho2, filho3]:
-        num_mutacoes_reais = min(num_genes_mutacao, len(filho))
-        indices_para_mutar = np.random.choice(len(filho), num_mutacoes_reais, replace=False)
-        filho[indices_para_mutar] = -1 + 2 * np.random.rand(num_mutacoes_reais)
+        # Cria um vetor de sorteio: True onde deve ocorrer mutação, False onde não deve
+        mascara_mutacao = np.random.rand(len(filho)) < taxa_mutacao
+        
+        # Gera novos valores aleatórios entre -1 e 1 para todos os genes
+        valores_aleatorios = -1 + 2 * np.random.rand(len(filho))
+        
+        # Substitui apenas os genes que caíram na máscara de mutação
+        filho[mascara_mutacao] = valores_aleatorios[mascara_mutacao]
+        
     return filho1, filho2, filho3
 
 def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
