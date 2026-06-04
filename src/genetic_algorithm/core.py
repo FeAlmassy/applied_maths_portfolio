@@ -71,7 +71,7 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
 
     return filho1, filho2, filho3
 
-def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, taxa_mutacao: float = 0.15) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def mutarV2(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, taxa_mutacao: float = 0.15) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Aplica mutação em massa. Em vez de mudar 1 único gene, 
     cada gene tem 'taxa_mutacao' (15%) de chance de ser completamente alterado.
