@@ -18,7 +18,7 @@ def criar_cromossomos(qtd_cromossomos: int = 6, qtd_genes: int = 19) -> np.ndarr
     return -1 + 2 * np.random.rand(qtd_cromossomos, qtd_genes)
 
 def calcular_fitness(cromossomos: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
-    # Blindagem 1: Força os tipos para arrays 1D/2D puros do NumPy, eliminando resquícios do Pandas
+    # Blindagem de tipos para rodar o Excel binarizado sem quebrar
     y_true = np.asarray(array_gabarito, dtype=int).flatten()
     x_dados = np.asarray(array_dados_clientes, dtype=float)
 
@@ -71,6 +71,7 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
 
     return filho1, filho2, filho3
 
+# AQUI ESTÁ A CORREÇÃO DO ERRO (O 4º ARGUMENTO: num_genes_mutacao)
 def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, num_genes_mutacao: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     for filho in [filho1, filho2, filho3]:
         num_mutacoes_reais = min(num_genes_mutacao, len(filho))
@@ -94,12 +95,11 @@ def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, fi
     return nova_populacao
 
 def prever_novo_cliente(melhor_cromossomo: np.ndarray, dados_novo_cliente: list) -> int:
-    # Blindagem 2: Conversão bruta para garantir escalares puros e evitar erros de vetorização 
     bias = float(melhor_cromossomo[0])
     genes = np.asarray(melhor_cromossomo[1:], dtype=float)
     x = np.asarray(dados_novo_cliente, dtype=float).flatten()
     
     q = np.dot(x, genes) + bias
-    q_scalar = float(np.sum(q)) # Garante que vire um número simples
+    q_scalar = float(np.sum(q))
     
     return 1 if q_scalar >= 0 else 0
