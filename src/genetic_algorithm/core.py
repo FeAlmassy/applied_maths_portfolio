@@ -21,8 +21,13 @@ def criar_cromossomos(qtd_cromossomos: int = 6, qtd_genes: int = 19) -> np.ndarr
     return -1 + 2 * np.random.rand(qtd_cromossomos, qtd_genes)
 
 def calcular_fitness(cromossomos: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
-    total_adimplentes = np.sum(array_gabarito == 1)
-    total_inadimplentes = np.sum(array_gabarito == 0)
+    # --- BLINDAGEM DE TIPOS ---
+    # Força qualquer formato (Series, DataFrame, Lista) a se tornar um Vetor NumPy 1D puro
+    y_true = np.asarray(array_gabarito).flatten()
+    x_dados = np.asarray(array_dados_clientes)
+
+    total_adimplentes = np.sum(y_true == 1)
+    total_inadimplentes = np.sum(y_true == 0)
     
     # Evitar divisão por zero se a base de dados for inválida
     if total_adimplentes == 0: total_adimplentes = 1
@@ -34,11 +39,12 @@ def calcular_fitness(cromossomos: np.ndarray, array_dados_clientes: np.ndarray, 
         bias = linha[0]
         genes = linha[1:]
 
-        q = np.dot(array_dados_clientes, genes) + bias
+        q = np.dot(x_dados, genes) + bias
         vetor_hipotese = np.where(q >= 0, 1, 0)
 
-        acertos_adimplentes = np.sum((vetor_hipotese == 1) & (array_gabarito == 1))
-        acertos_inadimplentes = np.sum((vetor_hipotese == 0) & (array_gabarito == 0))
+        # Como agora ambos são garantidamente vetores do NumPy, o '&' funcionará com perfeição
+        acertos_adimplentes = np.sum((vetor_hipotese == 1) & (y_true == 1))
+        acertos_inadimplentes = np.sum((vetor_hipotese == 0) & (y_true == 0))
 
         percentual_adimplente = acertos_adimplentes / total_adimplentes
         percentual_inadimplente = acertos_inadimplentes / total_inadimplentes
