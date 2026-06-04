@@ -113,7 +113,7 @@ if arquivo_excel is not None:
                     
                     # Correção aplicada: cálculo de probabilidade e mutação separados na mesma etapa
                     taxa_mutacao = num_genes_mutacao / qtd_genes 
-                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3, taxa_mutacao)
+                    filho1, filho2, filho3 = mutarv2(filho1, filho2, filho3, taxa_mutacao)
                     
                     populacao = atualizar_populacao(populacao, fitnesses, filho1, filho2, filho3, array_dados, array_gabarito)
 
