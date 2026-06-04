@@ -3,17 +3,14 @@ import pandas as pd
 from typing import Tuple
 
 def processar_base_dados(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, int, int]:
-    """
-    Processa o DataFrame vindo do Excel, separando features e gabarito.
-    """
-    dataframe_dados_clientes = df.iloc[:, 1:-1]  # ignora primeira coluna (índice) e última (gabarito)
-    dataframe_gabarito       = df.iloc[:, -1]    # sempre a última coluna
+    dataframe_dados_clientes = df.iloc[:, 1:-1]
+    dataframe_gabarito       = df.iloc[:, -1]
 
     array_dados_clientes = dataframe_dados_clientes.values
     array_gabarito       = dataframe_gabarito.values
 
     qtd_features = array_dados_clientes.shape[1]
-    qtd_genes    = qtd_features + 1  # features + bias
+    qtd_genes    = qtd_features + 1
 
     return array_dados_clientes, array_gabarito, qtd_features, qtd_genes
 
@@ -21,28 +18,25 @@ def criar_cromossomos(qtd_cromossomos: int = 6, qtd_genes: int = 19) -> np.ndarr
     return -1 + 2 * np.random.rand(qtd_cromossomos, qtd_genes)
 
 def calcular_fitness(cromossomos: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
-    # --- BLINDAGEM DE TIPOS ---
-    # Força qualquer formato (Series, DataFrame, Lista) a se tornar um Vetor NumPy 1D puro
-    y_true = np.asarray(array_gabarito).flatten()
-    x_dados = np.asarray(array_dados_clientes)
+    # Blindagem 1: Força os tipos para arrays 1D/2D puros do NumPy, eliminando resquícios do Pandas
+    y_true = np.asarray(array_gabarito, dtype=int).flatten()
+    x_dados = np.asarray(array_dados_clientes, dtype=float)
 
     total_adimplentes = np.sum(y_true == 1)
     total_inadimplentes = np.sum(y_true == 0)
     
-    # Evitar divisão por zero se a base de dados for inválida
     if total_adimplentes == 0: total_adimplentes = 1
     if total_inadimplentes == 0: total_inadimplentes = 1
     
     lista_hipotese = []
 
     for linha in cromossomos:
-        bias = linha[0]
-        genes = linha[1:]
+        bias = float(linha[0])
+        genes = np.asarray(linha[1:], dtype=float)
 
         q = np.dot(x_dados, genes) + bias
         vetor_hipotese = np.where(q >= 0, 1, 0)
 
-        # Como agora ambos são garantidamente vetores do NumPy, o '&' funcionará com perfeição
         acertos_adimplentes = np.sum((vetor_hipotese == 1) & (y_true == 1))
         acertos_inadimplentes = np.sum((vetor_hipotese == 0) & (y_true == 0))
 
@@ -78,19 +72,10 @@ def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarra
     return filho1, filho2, filho3
 
 def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, num_genes_mutacao: int = 1) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Mutação de Ponto Fixo: Altera exatamente 'N' genes aleatórios de cada filho.
-    """
     for filho in [filho1, filho2, filho3]:
-        # Garante que não vamos tentar mutar mais genes do que o cromossomo possui
         num_mutacoes_reais = min(num_genes_mutacao, len(filho))
-        
-        # Sorteia N índices únicos (sem repetição) para sofrerem mutação
         indices_para_mutar = np.random.choice(len(filho), num_mutacoes_reais, replace=False)
-        
-        # Gera novos valores aleatórios entre -1 e 1 apenas para esses índices
         filho[indices_para_mutar] = -1 + 2 * np.random.rand(num_mutacoes_reais)
-        
     return filho1, filho2, filho3
 
 def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
@@ -108,11 +93,13 @@ def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, fi
 
     return nova_populacao
 
-def prever_novo_cliente(melhor_cromossomo: np.ndarray, dados_novo_cliente: np.ndarray) -> int:
-    """
-    Realiza a inferência para um cliente inédito utilizando os pesos otimizados.
-    """
-    bias = melhor_cromossomo[0]
-    genes = melhor_cromossomo[1:]
-    q = np.dot(dados_novo_cliente, genes) + bias
-    return 1 if q >= 0 else 0
+def prever_novo_cliente(melhor_cromossomo: np.ndarray, dados_novo_cliente: list) -> int:
+    # Blindagem 2: Conversão bruta para garantir escalares puros e evitar erros de vetorização 
+    bias = float(melhor_cromossomo[0])
+    genes = np.asarray(melhor_cromossomo[1:], dtype=float)
+    x = np.asarray(dados_novo_cliente, dtype=float).flatten()
+    
+    q = np.dot(x, genes) + bias
+    q_scalar = float(np.sum(q)) # Garante que vire um número simples
+    
+    return 1 if q_scalar >= 0 else 0
