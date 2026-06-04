@@ -1,102 +1,144 @@
-import numpy as np
+import streamlit as st
 import pandas as pd
-from typing import Tuple
+import numpy as np
+import sys
+import os
 
-def processar_base_dados(df: pd.DataFrame) -> Tuple[np.ndarray, np.ndarray, int, int]:
-    """
-    Processa o DataFrame vindo do Excel, separando features e gabarito.
-    """
-    dataframe_dados_clientes = df.iloc[:, 1:-1]  # ignora primeira coluna (índice) e última (gabarito)
-    dataframe_gabarito       = df.iloc[:, -1]    # sempre a última coluna
+# Força o Python a enxergar a pasta raiz 'src' a partir da subpasta de páginas
+raiz = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
+if raiz not in sys.path:
+    sys.path.append(raiz)
 
-    array_dados_clientes = dataframe_dados_clientes.values
-    array_gabarito       = dataframe_gabarito.values
+from src.genetic_algorithm.core import (
+    processar_base_dados, criar_cromossomos, calcular_fitness,
+    fitness_percentual, selecionar_pais_roleta, cruzar_pais,
+    mutar, atualizar_populacao, prever_novo_cliente
+)
 
-    qtd_features = array_dados_clientes.shape[1]
-    qtd_genes    = qtd_features + 1  # features + bias
+st.title("🧬 Otimização Heurística: Algoritmo Genético")
+st.caption("Modelagem preditiva de risco de crédito baseada em evolução biológica simulada.")
 
-    return array_dados_clientes, array_gabarito, qtd_features, qtd_genes
+# Estilização básica inline para consistência visual
+st.markdown("""
+<style>
+div[data-testid="stMetric"] {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px;
+}
+</style>
+""", unsafe_allow_html=True)
 
-def criar_cromossomos(qtd_cromossomos: int = 6, qtd_genes: int = 19) -> np.ndarray:
-    return -1 + 2 * np.random.rand(qtd_cromossomos, qtd_genes)
+# SIDEBAR: PARÂMETROS DO MODELO
+st.sidebar.header("Configurações do Algoritmo")
+qtd_cromossomos = st.sidebar.slider("Tamanho da População", 6, 50, 10, step=2)
+geracoes = st.sidebar.slider("Número Máximo de Gerações", 10, 500, 100, step=10)
+fitness_alvo = st.sidebar.slider("Fitness Mínimo Alvo", 0.50, 1.00, 0.92, step=0.01)
 
-def calcular_fitness(cromossomos: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
-    total_adimplentes = np.sum(array_gabarito == 1)
-    total_inadimplentes = np.sum(array_gabarito == 0)
-    
-    # Evitar divisão por zero se a base de dados for inválida
-    if total_adimplentes == 0: total_adimplentes = 1
-    if total_inadimplentes == 0: total_inadimplentes = 1
-    
-    lista_hipotese = []
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 📊 Entrada de Dados")
+arquivo_excel = st.sidebar.file_uploader("Carregar Base de Clientes (.xlsx)", type=["xlsx"])
 
-    for linha in cromossomos:
-        bias = linha[0]
-        genes = linha[1:]
+# CONTEÚDO PRINCIPAL
+if arquivo_excel is not None:
+    try:
+        df_original = pd.read_excel(arquivo_excel)
+        array_dados, array_gabarito, qtd_features, qtd_genes = processar_base_dados(df_original)
+        
+        st.success(f"Base carregada com sucesso! Clientes mapeados: {array_dados.shape[0]} | Variáveis analisadas (Features): {qtd_features}")
+        
+        # Abas de Execução e Visualização dos Dados Brutos
+        tab_treino, tab_dados = st.tabs(["Treinamento do Algoritmo", "Visualização da Base"])
+        
+        with tab_dados:
+            st.dataframe(df_original, use_container_width=True)
+            
+        with tab_treino:
+            if st.button("Iniciar Evolução Populacional"):
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+                # Inicialização da População
+                populacao = criar_cromossomos(qtd_cromossomos, qtd_genes)
+                melhor_cromossomo = None
+                melhor_fitness = 0.0
+                historico_fitness = []
 
-        q = np.dot(array_dados_clientes, genes) + bias
-        vetor_hipotese = np.where(q >= 0, 1, 0)
+                # LOOP DE EVOLUÇÃO (Gerações)
+                for g in range(geracoes):
+                    fitnesses = calcular_fitness(populacao, array_dados, array_gabarito)
+                    percentuais = fitness_percentual(fitnesses)
 
-        acertos_adimplentes = np.sum((vetor_hipotese == 1) & (array_gabarito == 1))
-        acertos_inadimplentes = np.sum((vetor_hipotese == 0) & (array_gabarito == 0))
+                    idx_melhor = int(np.argmax(fitnesses))
+                    fitness_atual = float(fitnesses[idx_melhor])
 
-        percentual_adimplente = acertos_adimplentes / total_adimplentes
-        percentual_inadimplente = acertos_inadimplentes / total_inadimplentes
+                    if fitness_atual > melhor_fitness:
+                        melhor_fitness = fitness_atual
+                        melhor_cromossomo = populacao[idx_melhor].copy()
 
-        fitness = percentual_adimplente * percentual_inadimplente
-        lista_hipotese.append(fitness)
+                    historico_fitness.append(melhor_fitness)
+                    
+                    # Atualiza a UI a cada geração
+                    progress = (g + 1) / geracoes
+                    progress_bar.progress(progress)
+                    status_text.text(f"Geração {g+1}/{geracoes} | Melhor Fitness Atual: {melhor_fitness:.4f}")
 
-    return np.array(lista_hipotese)
+                    if melhor_fitness >= fitness_alvo:
+                        status_text.text(f"🎯 Fitness alvo de {fitness_alvo} atingido na geração {g+1}!")
+                        break
 
-def fitness_percentual(vetor_fitnesses: np.ndarray) -> np.ndarray:
-    soma = np.sum(vetor_fitnesses)
-    if soma == 0:
-        return np.ones(len(vetor_fitnesses)) / len(vetor_fitnesses)
-    return vetor_fitnesses / soma
+                    # Ciclo Evolutivo - Variáveis explicitamente corrigidas
+                    pai, mae = selecionar_pais_roleta(populacao, percentuais)
+                    filho1, filho2, filho3 = cruzar_pais(pai, mae)
+                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3)
+                    populacao = atualizar_populacao(
+                        populacao, fitnesses, filho1, filho2, filho3, array_dados, array_gabarito
+                    )
 
-def selecionar_pais_roleta(cromossomos: np.ndarray, percentual_fitnesses: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    roleta_acumulada = np.cumsum(percentual_fitnesses)
-    indice_pai = min(int(np.searchsorted(roleta_acumulada, np.random.rand())), len(cromossomos) - 1)
-    indice_mae = min(int(np.searchsorted(roleta_acumulada, np.random.rand())), len(cromossomos) - 1)
-    return cromossomos[indice_pai], cromossomos[indice_mae]
-
-def cruzar_pais(pai: np.ndarray, mae: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    c1 = np.random.randint(1, len(pai))
-    c2 = np.random.randint(1, len(pai))
-    c3 = np.random.randint(1, len(pai))
-
-    filho1 = np.concatenate([pai[:c1], mae[c1:]])
-    filho2 = np.concatenate([pai[:c2], mae[c2:]])
-    filho3 = np.concatenate([pai[:c3], mae[c3:]])
-
-    return filho1, filho2, filho3
-
-def mutar(filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-    for filho in [filho1, filho2, filho3]:
-        indice = np.random.randint(0, len(filho))
-        filho[indice] = -1 + 2 * np.random.rand()
-    return filho1, filho2, filho3
-
-def atualizar_populacao(cromossomos: np.ndarray, vetor_fitnesses: np.ndarray, filho1: np.ndarray, filho2: np.ndarray, filho3: np.ndarray, array_dados_clientes: np.ndarray, array_gabarito: np.ndarray) -> np.ndarray:
-    filhos = np.array([filho1, filho2, filho3])
-    fitnesses_filhos = calcular_fitness(filhos, array_dados_clientes, array_gabarito)
-
-    indices_melhores_filhos = np.argsort(fitnesses_filhos)[-2:]
-    indices_piores          = np.argsort(vetor_fitnesses)[:2]
-
-    nova_populacao = cromossomos.copy()
-    for i in range(2):
-        idx_pior  = int(indices_piores[i])
-        idx_filho = int(indices_melhores_filhos[i])
-        nova_populacao[idx_pior] = filhos[idx_filho]
-
-    return nova_populacao
-
-def prever_novo_cliente(melhor_cromossomo: np.ndarray, dados_novo_cliente: np.ndarray) -> int:
-    """
-    Realiza a inferência para um cliente inédito utilizando os pesos otimizados.
-    """
-    bias = melhor_cromossomo[0]
-    genes = melhor_cromossomo[1:]
-    q = np.dot(dados_novo_cliente, genes) + bias
-    return 1 if q >= 0 else 0
+                # Salva o melhor modelo na sessão do Streamlit para usar na predição abaixo
+                st.session_state["melhor_modelo"] = melhor_cromossomo
+                st.session_state["qtd_features"] = qtd_features
+                
+                # Módulos de Resultados Graficos
+                st.markdown("### Resultados Técnicos")
+                c1, c2 = st.columns(2)
+                c1.metric("Melhor Fitness Alcançado", f"{melhor_fitness:.5f}")
+                c2.metric("Gerações Computadas", f"{len(historico_fitness)}")
+                
+                st.markdown("#### Curva de Convergência Heurística")
+                st.line_chart(historico_fitness)
+        
+        # SESSÃO DE PREVISÃO INDIVIDUAL (INFERÊNCIA)
+        if "melhor_modelo" in st.session_state:
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.markdown("### 🔮 Predição de Risco para Novo Cliente")
+            st.write("Insira os parâmetros numéricos do novo cliente para calcular a tendência de crédito:")
+            
+            # Cria colunas dinâmicas para preenchimento de inputs com base no número de features
+            col_inputs = st.columns(4)
+            dados_novo_cliente = []
+            
+            for idx in range(st.session_state["qtd_features"]):
+                nome_coluna = df_original.columns[idx + 1]
+                valor_medio = float(np.mean(array_dados[:, idx]))
+                
+                with col_inputs[idx % 4]:
+                    val = st.number_input(f"{nome_coluna}", value=valor_medio, format="%.4f", key=f"feat_{idx}")
+                    dados_novo_cliente.append(val)
+            
+            if st.button("Executar Análise de Crédito"):
+                modelo = st.session_state["melhor_modelo"]
+                entrada_array = np.array(dados_novo_cliente)
+                
+                predicao = prever_novo_cliente(modelo, entrada_array)
+                
+                if predicao == 1:
+                    st.success("Análise Concluída: **Cliente Classificado como ADIMPLENTE (Baixo Risco)**")
+                else:
+                    st.error("Análise Concluída: **Cliente Classificado como INADIMPLENTE (Alto Risco)**")
+                    
+    except Exception as e:
+        st.error(f"Erro ao processar arquivo Excel. Verifique a formatação interna da planilha. Detalhes: {e}")
+else:
+    st.info("Aguardando upload da base de dados '.xlsx' na barra lateral para iniciar os ciclos computacionais.")
