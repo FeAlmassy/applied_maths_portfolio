@@ -110,7 +110,7 @@ if arquivo_excel is not None:
 
                     pai, mae = selecionar_pais_roleta(populacao, percentuais)
                     filho1, filho2, filho3 = cruzar_pais(pai, mae)
-                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3, num_genes_mutacao)
+                    taxa_mutacao = num_genes_mutacao / qtd_genes filho1, filho2, filho3 = mutar(filho1, filho2, filho3, taxa_mutacao)
                     populacao = atualizar_populacao(populacao, fitnesses, filho1, filho2, filho3, array_dados, array_gabarito)
 
                 st.session_state["melhor_modelo"] = melhor_cromossomo
