@@ -67,6 +67,18 @@ if arquivo_excel is not None:
         # Processa a base utilizando a função pura do seu motor matemático
         array_dados, array_gabarito, qtd_features, qtd_genes = processar_base_dados(df_processado)
         
+        # --- NOVO CONTROLE DE MUTAÇÃO DINÂMICO ---
+        st.sidebar.markdown("---")
+        st.sidebar.markdown("### 🧬 Controle de Mutação")
+        num_genes_mutacao = st.sidebar.slider(
+            "Quantidade de Genes Mutados por Filho", 
+            min_value=1, 
+            max_value=int(qtd_genes), 
+            value=max(1, int(qtd_genes * 0.1)), # Padrão: muta 10% dos genes
+            step=1
+        )
+        # -----------------------------------------
+
         st.success(f"Base carregada e estruturada com sucesso! Clientes mapeados: {array_dados.shape[0]} | Variáveis ativas no modelo (Features): {qtd_features}")
         
         tab_treino, tab_dados = st.tabs(["Treinamento do Algoritmo", "Visualização da Base de Treino"])
@@ -107,7 +119,10 @@ if arquivo_excel is not None:
 
                     pai, mae = selecionar_pais_roleta(populacao, percentuais)
                     filho1, filho2, filho3 = cruzar_pais(pai, mae)
-                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3)
+                    
+                    # Passando o número dinâmico de genes para a mutação
+                    filho1, filho2, filho3 = mutar(filho1, filho2, filho3, num_genes_mutacao)
+                    
                     populacao = atualizar_populacao(
                         populacao, fitnesses, filho1, filho2, filho3, array_dados, array_gabarito
                     )
